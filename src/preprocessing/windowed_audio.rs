@@ -9,7 +9,7 @@ pub struct WindowedAudio<'a> {
 }
 
 impl<'a> Iterator for WindowedAudio<'a> {
-    type Item = (Array1<f32>, (f64, f64));
+    type Item = (Array1<f32>, (f32, f32));
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.audio.len() {
@@ -24,8 +24,8 @@ impl<'a> Iterator for WindowedAudio<'a> {
             window = ndarray::concatenate(Axis(0), &[window.view(), padding.view()]).unwrap();
         }
 
-        let t_start = self.index as f64 / AUDIO_SAMPLE_RATE as f64;
-        let window_time = (t_start, t_start + (AUDIO_N_SAMPLES as f64 / AUDIO_SAMPLE_RATE as f64));
+        let t_start = self.index as f32 / AUDIO_SAMPLE_RATE as f32;
+        let window_time = (t_start, t_start + (AUDIO_N_SAMPLES as f32 / AUDIO_SAMPLE_RATE as f32));
 
         self.index += self.hop_size;
         Some((window, window_time))

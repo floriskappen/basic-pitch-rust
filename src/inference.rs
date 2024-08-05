@@ -40,7 +40,7 @@ fn unwrap_output(
 
 pub fn run_inference(
     audio_path: &str,
-) -> Result<HashMap<String, Array2<f32>>, Box<dyn Error>> {
+) -> Result<(Array2<f32>, Array2<f32>, Array2<f32>), Box<dyn Error>> {
     let n_overlapping_frames = 30;
     let overlap_len = n_overlapping_frames * FFT_HOP;
     let hop_size = AUDIO_N_SAMPLES - overlap_len;
@@ -53,9 +53,9 @@ pub fn run_inference(
         .commit_from_file(MODEL_PATH)?;
 
     let mut output: HashMap<String, Vec<Array2<f32>>> = HashMap::from([
-        ("contour".to_string(), vec![]),
-        ("onset".to_string(), vec![]),
-        ("note".to_string(), vec![]),
+        ("contours".to_string(), vec![]),
+        ("onsets".to_string(), vec![]),
+        ("frames".to_string(), vec![]),
     ]);
 
     for window in audio_windows {
@@ -74,11 +74,11 @@ pub fn run_inference(
                 .to_owned();
             
             if k == "StatefulPartitionedCall:0" {
-                output.get_mut("contour").unwrap().push(test)
+                output.get_mut("contours").unwrap().push(test)
             } else if k == "StatefulPartitionedCall:1" { 
-                output.get_mut("note").unwrap().push(test)
+                output.get_mut("frames").unwrap().push(test)
             } else if k == "StatefulPartitionedCall:2" {
-                output.get_mut("onset").unwrap().push(test)
+                output.get_mut("onsets").unwrap().push(test)
             }
         }
     }
@@ -89,5 +89,9 @@ pub fn run_inference(
         (k, unwrapped)
     }).collect();
 
-    Ok(unwrapped_output)
+    Ok((
+        unwrapped_output.get("contours").unwrap().clone(),
+        unwrapped_output.get("frames").unwrap().clone(),
+        unwrapped_output.get("onsets").unwrap().clone(),
+    ))
 }
