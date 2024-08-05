@@ -13,9 +13,9 @@ fn load_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> Result<Array1
     let spec = reader.spec();
 
     let samples: Vec<i16> = reader.samples::<i16>().map(|s| s.unwrap()).collect();
+
     // Convert to mono if needed
     let mono_samples = if spec.channels == 2 {
-        let samples: Vec<i16> = reader.samples::<i16>().map(|s| s.unwrap()).collect();
         let mut mono_samples = vec![];
         for chunk in samples.chunks(2) {
             let left = chunk[0];
@@ -27,6 +27,9 @@ fn load_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> Result<Array1
     } else {
         samples.into_iter().map(|s| s as f32).collect()
     };
+
+    // Convert i16 samples to f32 and scale to -1.0 to 1.0
+    let mono_samples: Vec<f32> = mono_samples.into_iter().map(|s| s / i16::MAX as f32).collect();
 
     // Resample if needed
     let current_sample_rate = spec.sample_rate;
@@ -40,7 +43,6 @@ fn load_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> Result<Array1
         let interpolation = SincInterpolationType::Cubic;
         let oversampling_factor = 256;  // Higher value for better quality
         let window = rubato::WindowFunction::BlackmanHarris2;  // Blackman-Harris window function
-    
         let mut resampler = SincFixedIn::<f32>::new(
             resample_ratio,
             2.0,
