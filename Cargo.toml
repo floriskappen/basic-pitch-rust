@@ -4,3 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+hound = "3.5.1"
+ort = "2.0.0-rc.4"
+ndarray = "0.15.0"
+rubato = "0.15.0"
