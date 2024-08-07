@@ -1,70 +1,65 @@
 use std::{error::Error, path::Path};
 
 use hound::WavReader;
-use ndarray::{Array1, Array2, Axis};
-use rubato::{Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType};
+use ndarray::{concatenate, Array1, Array2, Axis};
+use rubato::{Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction};
 
 use crate::constants::AUDIO_SAMPLE_RATE;
 
 use crate::preprocessing::windowed_audio::window_audio_file;
 
-fn load_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> Result<Array1<f32>, Box<dyn Error>> {
-    let mut reader = WavReader::open(path)?;
-    let spec = reader.spec();
+fn load_and_convert_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> Result<Array1<f32>, Box<dyn Error>> {
+    // Read the input WAV file
+    let reader = WavReader::open(path)?;
+    let mut spec = reader.spec();
+    let duration = reader.duration() as usize;
 
-    let samples: Vec<i16> = reader.samples::<i16>().map(|s| s.unwrap()).collect();
+    let max_sample_value = (2.0_f64.powi(spec.bits_per_sample as i32 - 1) - 1.0) as i32;
 
-    // Convert to mono if needed
-    let mono_samples = if spec.channels == 2 {
-        let mut mono_samples = vec![];
-        for chunk in samples.chunks(2) {
-            let left = chunk[0];
-            let right = chunk[1];
-            let mono_sample = ((left as i32 + right as i32) / 2) as f32;
-            mono_samples.push(mono_sample);
+    let mut reader_samples = reader.into_samples::<i32>();
+    let samples;
+
+    // If it's stereo, convert it to mono
+    if spec.channels == 2 {
+        let mut mono_samples: Vec<i32> = vec![];
+        while let (Some(left), Some(right)) = (reader_samples.next(), reader_samples.next()) {
+            let left = left?;
+            let right = right?;
+            let mono_sample = (left as i32 + right as i32) / 2;
+            mono_samples.push(mono_sample)
         }
-        mono_samples
+
+        samples = mono_samples;
+        spec.channels = 1
     } else {
-        samples.into_iter().map(|s| s as f32).collect()
+        samples = reader_samples.into_iter().map(|s| s.unwrap()).collect();
+    }
+
+    let mut channel_data: Vec<Vec<f64>> = vec![Vec::new()];
+    for &sample in samples.iter() {
+        channel_data[0].push(sample as f64 / max_sample_value as f64);
+    }
+
+    let params = SincInterpolationParameters {
+        sinc_len: 256,
+        f_cutoff: 0.95,
+        interpolation: SincInterpolationType::Linear,
+        oversampling_factor: 256,
+        window: WindowFunction::BlackmanHarris2,
     };
+    let mut resampler = SincFixedIn::<f64>::new(
+        target_sample_rate as f64 / spec.sample_rate as f64,
+        2.0,
+        params,
+        duration,
+        1
+    )?;
+    let channel_resampled_data = resampler.process(&channel_data, None)?;
 
-    // Convert i16 samples to f32 and scale to -1.0 to 1.0
-    let mono_samples: Vec<f32> = mono_samples.into_iter().map(|s| s / i16::MAX as f32).collect();
+    // Convert the channel data vector into a single Vec<f32> for further processing
+    let resampled_samples_f32: Vec<f32> = channel_resampled_data[0].iter().map(|&s| s as f32).collect();
 
-    // Resample if needed
-    let current_sample_rate = spec.sample_rate;
-
-    let resampled_samples = if current_sample_rate != target_sample_rate {
-        let resample_ratio = target_sample_rate as f64 / current_sample_rate as f64;
-
-        // Sinc interpolation parameters that match librosa's quality settings
-        let sinc_len = 64;  // This can be adjusted based on desired quality
-        let f_cutoff = 0.95;  // Cutoff frequency to avoid aliasing
-        let interpolation = SincInterpolationType::Cubic;
-        let oversampling_factor = 256;  // Higher value for better quality
-        let window = rubato::WindowFunction::BlackmanHarris2;  // Blackman-Harris window function
-        let mut resampler = SincFixedIn::<f32>::new(
-            resample_ratio,
-            2.0,
-            SincInterpolationParameters {
-                sinc_len,
-                f_cutoff,
-                interpolation,
-                oversampling_factor,
-                window,
-            },
-            mono_samples.len(),
-            1,
-        )?;
-
-        // Process the entire mono_samples at once
-        let mut output = resampler.process(&[&mono_samples], None)?;
-        output.pop().unwrap()  // We only have one channel, so we get the first item
-    } else {
-        mono_samples
-    };
-
-    Ok(Array1::from(resampled_samples))
+    Ok(Array1::from(resampled_samples_f32))
 }
 
 pub fn get_audio_input(
@@ -72,14 +67,18 @@ pub fn get_audio_input(
     overlap_len: usize,
     hop_size: usize,
 ) -> Result<(Vec<Array2<f32>>, usize), Box<dyn Error>> {
-    let audio_original = load_audio(audio_path, AUDIO_SAMPLE_RATE as u32)?;
+    let audio_original = load_and_convert_audio(audio_path, AUDIO_SAMPLE_RATE as u32)?;
     let original_length = audio_original.len();
+    
+    // Padding with half the overlap length
     let padding = Array1::zeros(overlap_len / 2);
-    let padded_audio = ndarray::concatenate(Axis(0), &[padding.view(), audio_original.view()])?;
+    let padded_audio = concatenate(Axis(0), &[padding.view(), audio_original.view()])?;
 
     let mut audio_windows = vec![];
     for (window, _) in window_audio_file(&padded_audio, hop_size) {
-        audio_windows.push(window.insert_axis(Axis(0)));
+        // Expanding dimensions to match tf.expandDims(..., -1)
+        let expanded_window = window.insert_axis(Axis(0)).to_owned();
+        audio_windows.push(expanded_window);
     }
 
     Ok((audio_windows, original_length))
