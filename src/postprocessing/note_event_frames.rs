@@ -60,11 +60,12 @@ pub fn output_to_notes_poly(
     // a hacky form of zeros-like
     let mut peak_threshold_matrix = inferred_onsets.iter().map(|o| vec![0.0; o.len()]).collect::<Vec<_>>();
     
-    for (row, col) in arg_rel_max(&inferred_onsets, 2) {
+    for (row, col) in arg_rel_max(&inferred_onsets, 1) {
         peak_threshold_matrix[row][col] = inferred_onsets[row][col];
     }
-
+    
     let (mut note_starts, mut freq_idxs) = where_greater_than_axis1(&peak_threshold_matrix, onset_thresh);
+
 
     note_starts.reverse();
     freq_idxs.reverse();
@@ -208,7 +209,7 @@ pub fn output_to_notes_poly(
             });
         }
     }
-
+    
     note_events
 }
 

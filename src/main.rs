@@ -55,7 +55,5 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut file = File::create(output_file_path)?;
     file.write_all(&midi_buffer)?;
 
-    // println!("{:?}", note_event_times);
-
     Ok(())
 }

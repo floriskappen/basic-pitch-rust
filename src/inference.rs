@@ -82,7 +82,6 @@ pub fn run_inference(
     let unwrapped_output: HashMap<String, Array2<f32>> = output.into_iter().map(|(k, v)| {
         let views: Vec<ArrayView3<f32>> = v.iter().map(|array| array.view()).collect();
         let concatenated = concatenate(Axis(0), views.as_slice()).unwrap();
-        println!("k: {} {:?}", k, concatenated.shape());
         let unwrapped = unwrap_output(concatenated, original_length, n_overlapping_frames).unwrap();
         (k, unwrapped)
     }).collect();
