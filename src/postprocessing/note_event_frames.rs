@@ -59,6 +59,7 @@ pub fn output_to_notes_poly(
 
     // a hacky form of zeros-like
     let mut peak_threshold_matrix = inferred_onsets.iter().map(|o| vec![0.0; o.len()]).collect::<Vec<_>>();
+    
     for (row, col) in arg_rel_max(&inferred_onsets, 2) {
         peak_threshold_matrix[row][col] = inferred_onsets[row][col];
     }

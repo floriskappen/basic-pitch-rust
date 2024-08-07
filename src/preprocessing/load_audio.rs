@@ -8,7 +8,7 @@ use crate::constants::AUDIO_SAMPLE_RATE;
 
 use crate::preprocessing::windowed_audio::window_audio_file;
 
-fn load_and_convert_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> Result<Array1<f32>, Box<dyn Error>> {
+fn load_and_convert_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> Result<(Array1<f32>, usize), Box<dyn Error>> {
     // Read the input WAV file
     let reader = WavReader::open(path)?;
     let mut spec = reader.spec();
@@ -47,6 +47,8 @@ fn load_and_convert_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> R
         oversampling_factor: 256,
         window: WindowFunction::BlackmanHarris2,
     };
+
+    let resample_ratio = target_sample_rate as f64 / spec.sample_rate as f64;
     let mut resampler = SincFixedIn::<f64>::new(
         target_sample_rate as f64 / spec.sample_rate as f64,
         2.0,
@@ -59,7 +61,7 @@ fn load_and_convert_audio<P: AsRef<Path>>(path: P, target_sample_rate: u32) -> R
     // Convert the channel data vector into a single Vec<f32> for further processing
     let resampled_samples_f32: Vec<f32> = channel_resampled_data[0].iter().map(|&s| s as f32).collect();
 
-    Ok(Array1::from(resampled_samples_f32))
+    Ok((Array1::from(resampled_samples_f32), (duration as f64 * resample_ratio) as usize))
 }
 
 pub fn get_audio_input(
@@ -67,8 +69,7 @@ pub fn get_audio_input(
     overlap_len: usize,
     hop_size: usize,
 ) -> Result<(Vec<Array2<f32>>, usize), Box<dyn Error>> {
-    let audio_original = load_and_convert_audio(audio_path, AUDIO_SAMPLE_RATE as u32)?;
-    let original_length = audio_original.len();
+    let (audio_original, original_length) = load_and_convert_audio(audio_path, AUDIO_SAMPLE_RATE as u32)?;
     
     // Padding with half the overlap length
     let padding = Array1::zeros(overlap_len / 2);

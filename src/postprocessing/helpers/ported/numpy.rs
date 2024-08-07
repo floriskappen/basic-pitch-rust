@@ -95,7 +95,7 @@ pub fn mean_std_dev(array: &[Vec<f32>]) -> (f32, f32) {
 ///
 /// * The maximum value in the array.
 pub fn global_max(array: &[Vec<f32>]) -> f32 {
-    array.iter().flat_map(|row| row.iter()).cloned().fold(f32::NEG_INFINITY, f32::max)
+    array.iter().fold(0.0, |prev, row| prev.max(*row.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()))
 }
 
 /// Calculate the minimum over axis 0 for a 3D array.
