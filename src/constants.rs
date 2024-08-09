@@ -18,3 +18,5 @@ pub const ANNOTATIONS_BASE_FREQUENCY: f32 = 27.5; // lowest key on a piano
 pub const ANNOTATIONS_N_SEMITONES: f32 = 88.0; // number of piano keys
 pub const N_FREQ_BINS_CONTOURS: usize =
   (ANNOTATIONS_N_SEMITONES * CONTOURS_BINS_PER_SEMITONE) as usize;
+
+pub const TICKS_PER_BEAT: u16 = 480;

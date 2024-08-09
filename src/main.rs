@@ -48,8 +48,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         25
     );
 
+    
     let note_event_times = note_frames_to_time(&notes_event_frames_with_bend);
-    let midi_buffer = generate_midi_file_data(&note_event_times);
+    let midi_buffer = generate_midi_file_data(&note_event_times, 120);
 
     let output_file_path = Path::new("./output/output.midi");
     let mut file = File::create(output_file_path)?;

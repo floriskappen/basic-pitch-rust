@@ -1,6 +1,6 @@
 # basic-pitch-rust
 
-a (soon to be) full implementation of the [basic-pitch](https://github.com/spotify/basic-pitch/) library in rust.
+a full implementation of the [basic-pitch](https://github.com/spotify/basic-pitch/) library in rust.
 
 the only other rust implementation I could find was [one by w-ensink](https://github.com/w-ensink/basic_pitch) but that is essentially a port of a c++ implementation from a different project called [NeuralNote](https://github.com/DamRsn/NeuralNote). this project is a full implementation from scratch in rust. i am not at all experienced with working with neural networks or the ndarray crate in rust so i expect things to not be optimal.
 
@@ -19,7 +19,7 @@ this implementation uses the provided neural network in onnx format together wit
 i don't really have experience managing repositories but if you'd like to contribute feel free to.
 
 some things:
+- add support for audio file types other than WAV
 - docstings
-- it would be nice to implement end to end tests so we can easily verify if stuff is breaking
-- ofcourse unit tests would be cool too but yeah idk who would want to write that
+- the same tests that are done in [basic-pitch-ts](https://github.com/spotify/basic-pitch-ts/tree/main) can be implemented here
 - some functions could probably be optimized since i am not that experienced with ndarray/ort

@@ -236,7 +236,7 @@ pub fn add_pitch_bends_to_note_events(
         let freq_idx = midi_pitch_to_contour_bin(note.pitch_midi as f32).round() as usize;
         let freq_start_idx = freq_idx.saturating_sub(n_bins_tolerance);
         let freq_end_idx = (freq_idx + n_bins_tolerance + 1).min(N_FREQ_BINS_CONTOURS);
-
+        
         let freq_gaussian_submatrix = &freq_gaussian[
             n_bins_tolerance.saturating_sub(freq_idx)..window_length - (freq_idx.saturating_sub(N_FREQ_BINS_CONTOURS - n_bins_tolerance - 1))
         ];
@@ -252,7 +252,8 @@ pub fn add_pitch_bends_to_note_events(
             })
             .collect();
 
-        let pb_shift = n_bins_tolerance.saturating_sub(freq_idx.saturating_sub(n_bins_tolerance));
+        let pb_shift = n_bins_tolerance - std::cmp::max(0, n_bins_tolerance as i32 - freq_idx as i32) as usize;
+
         let bends: Vec<isize> = arg_max_axis1(&pitch_bend_submatrix)
             .iter()
             .filter_map(|&v| v.map(|v| v as isize - pb_shift as isize))
