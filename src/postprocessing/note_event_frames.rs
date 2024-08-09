@@ -162,27 +162,33 @@ pub fn output_to_notes_poly(
             }
             let i_end = i - 1 - k;
 
+            let i_start;
             // backwards pass
-            i = i_mid - 1;
+            i = i_mid;
             k = 0;
-            while i > 0 && k < energy_tolerance {
-                if remaining_energy[i][freq_idx] < inferred_frame_thresh {
-                    k += 1;
-                } else {
-                    k = 0;
+            if i_mid > 0 {
+                i = i_mid - 1;
+                while i > 0 && k < energy_tolerance {
+                    if remaining_energy[i][freq_idx] < inferred_frame_thresh {
+                        k += 1;
+                    } else {
+                        k = 0;
+                    }
+    
+                    remaining_energy[i][freq_idx] = 0.0;
+                    if freq_idx < MAX_FREQ_IDX {
+                        remaining_energy[i][freq_idx + 1] = 0.0;
+                    }
+                    if freq_idx > 0 {
+                        remaining_energy[i][freq_idx - 1] = 0.0;
+                    }
+    
+                    i -= 1;
                 }
-
-                remaining_energy[i][freq_idx] = 0.0;
-                if freq_idx < MAX_FREQ_IDX {
-                    remaining_energy[i][freq_idx + 1] = 0.0;
-                }
-                if freq_idx > 0 {
-                    remaining_energy[i][freq_idx - 1] = 0.0;
-                }
-
-                i -= 1;
+                i_start = i + 1 + k;
+            } else {
+                i_start = i + k;
             }
-            let i_start = i + 1 + k;
 
             if i_end >= n_frames {
                 panic!("i_end is past end of times. (i_end, times.length): ({}, {})", i_end, n_frames);
